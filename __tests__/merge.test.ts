@@ -1,5 +1,5 @@
 import * as core from '@actions/core'
-import artifact from 'tfc-survival-artifact'
+import artifact from '@actions/artifact'
 import {run} from '../src/merge/merge-artifacts'
 import {Inputs} from '../src/merge/constants'
 import * as search from '../src/shared/search'

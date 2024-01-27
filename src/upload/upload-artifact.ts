@@ -2,7 +2,7 @@ import * as core from '@actions/core'
 import artifact, {
   UploadArtifactOptions,
   ArtifactNotFoundError
-} from 'tfc-survival-artifact'
+} from '@actions/artifact'
 import {findFilesToUpload} from '../shared/search'
 import {getInputs} from './input-helper'
 import {NoFileOptions} from './constants'

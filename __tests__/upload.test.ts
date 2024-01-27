@@ -1,6 +1,6 @@
 import * as core from '@actions/core'
 import * as github from '@actions/github'
-import artifact, {ArtifactNotFoundError} from 'tfc-survival-artifact'
+import artifact, {ArtifactNotFoundError} from '@actions/artifact'
 import {run} from '../src/upload/upload-artifact'
 import {Inputs} from '../src/upload/constants'
 import * as search from '../src/shared/search'
