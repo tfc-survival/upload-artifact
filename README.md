@@ -34,6 +34,7 @@ See also [download-artifact](https://github.com/actions/download-artifact).
 
 ## v0.3 - What's new
 This version of upload-artifact allow to publish single file without packing to zip archive
+
 forked from v4 common version
 
 > [!IMPORTANT]
