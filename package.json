@@ -1,7 +1,7 @@
 {
-  "name": "upload-artifact",
+  "name": "upload-single-artifact",
   "version": "4.3.0",
-  "description": "Upload an Actions Artifact in a workflow run",
+  "description": "Upload an Actions Single Artifact in a workflow run",
   "main": "dist/upload/index.js",
   "scripts": {
     "build": "tsc",
