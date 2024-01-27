@@ -1,4 +1,4 @@
-# `@actions/upload-artifact`
+# `@tfc-survival/upload-artifact`
 
 Upload [Actions Artifacts](https://docs.github.com/en/actions/using-workflows/storing-workflow-data-as-artifacts) from your Workflow Runs. Internally powered by [@actions/artifact](https://github.com/actions/toolkit/tree/main/packages/artifact) package.
 
@@ -32,7 +32,9 @@ See also [download-artifact](https://github.com/actions/download-artifact).
   - [Where does the upload go?](#where-does-the-upload-go)
 
 
-## v4 - What's new
+## v0.3 - What's new
+This version of upload-artifact allow to publish single file without packing to zip archive
+forked from v4 common version
 
 > [!IMPORTANT]
 > upload-artifact@v4+ is not currently supported on GHES yet. If you are on GHES, you must use [v3](https://github.com/actions/upload-artifact/releases/tag/v3).
@@ -66,7 +68,7 @@ For assistance with breaking changes, see [MIGRATION.md](docs/MIGRATION.md).
 ### Inputs
 
 ```yaml
-- uses: actions/upload-artifact@v4
+- uses: tfc-survival/upload-artifact@v0.3
   with:
     # Name of the artifact to upload.
     # Optional. Default is 'artifact'
@@ -74,6 +76,7 @@ For assistance with breaking changes, see [MIGRATION.md](docs/MIGRATION.md).
 
     # A file, directory or wildcard pattern that describes what to upload
     # Required.
+    # Will not archive single file to zip
     path:
 
     # The desired behavior if no files are found using the provided path.
