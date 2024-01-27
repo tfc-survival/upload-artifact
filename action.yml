@@ -1,5 +1,5 @@
-name: 'Upload a Build Artifact'
-description: 'Upload a build artifact that can be used by subsequent workflow steps'
+name: 'Upload a Build Single Artifact'
+description: 'Upload a build single artifact that can be used by subsequent workflow steps, without packing to zip archive'
 author: 'GitHub'
 inputs:
   name:
