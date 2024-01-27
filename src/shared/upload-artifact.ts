@@ -14,7 +14,7 @@ export async function uploadArtifact(
   rootDirectory: string,
   options: UploadArtifactOptions
 ) {
-  const uploadResponse = await uploadArtifact(
+  const uploadResponse = await uploadArtifact1(
     artifactName,
     filesToUpload,
     rootDirectory,
@@ -33,11 +33,11 @@ export async function uploadArtifact(
   core.setOutput('artifact-url', artifactURL)
 }
 
-async function uploadArtifact(
-name: string,
-files: string[],
-rootDirectory: string,
-options?: UploadArtifactOptions
+async function uploadArtifact1(
+  name: string,
+  files: string[],
+  rootDirectory: string,
+  options?: UploadArtifactOptions
 ): Promise<UploadArtifactResponse> {
     try {
       if (isGhes()) {
