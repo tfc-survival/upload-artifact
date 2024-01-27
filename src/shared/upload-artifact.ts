@@ -1,6 +1,6 @@
 import * as core from '@actions/core'
 import * as github from '@actions/github'
-import artifact, {UploadArtifactOptions} from '@actions/artifact'
+import artifact, {UploadArtifactOptions} from 'tfc-survival-artifact'
 
 export async function uploadArtifact(
   artifactName: string,

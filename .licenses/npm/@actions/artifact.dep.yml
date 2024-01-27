@@ -1,6 +1,6 @@
 ---
-name: "@actions/artifact"
-version: 2.1.0
+name: "tfc-survival-artifact"
+version: 1.0.0
 type: npm
 summary: 
 homepage: 
