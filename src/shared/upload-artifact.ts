@@ -260,7 +260,7 @@ async function uploadActifactToBlobStorage(
   }
 
   const options: BlockBlobUploadStreamOptions = {
-    blobHTTPHeaders: {blobContentType: 'application/java-archive'},
+    blobHTTPHeaders: {blobContentType: 'application/vnd.github.raw'},
     onProgress: uploadCallback
   }
 
