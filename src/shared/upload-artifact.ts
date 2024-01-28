@@ -260,7 +260,7 @@ async function uploadActifactToBlobStorage(
   }
 
   const options: BlockBlobUploadStreamOptions = {
-    blobHTTPHeaders: {blobContentType: 'application/octet-stream'},
+    blobHTTPHeaders: {blobContentType: 'application/java-archive'},
     onProgress: uploadCallback
   }
 
