@@ -1,12 +1,28 @@
 import * as core from '@actions/core'
+import * as os from 'os'
 import * as github from '@actions/github'
-import artifact, {UploadArtifactOptions, GHESNotSupportedError, UploadArtifactResponse, CreateArtifactRequest, InvalidResponseError, FinalizeArtifactRequest, StringValue, BlobUploadResponse, NetworkError}, getBackendIdsFromToken,internalArtifactTwirpClient,getExpiration,uploadActifactToBlobStorage,getUploadChunkSize, getConcurrency from '@actions/artifact'
-import { ReadStream } from 'fs'
-import { createReadStream } from 'fs'
+import artifact, {
+  UploadArtifactOptions,
+  GHESNotSupportedError,
+  UploadArtifactResponse,
+  InvalidResponseError,
+  NetworkError
+} from '@actions/artifact'
+import {ReadStream} from 'fs'
+import {createReadStream} from 'fs'
 import * as crypto from 'crypto'
 import * as stream from 'stream'
 import {BlobClient, BlockBlobUploadStreamOptions} from '@azure/storage-blob'
 import {TransferProgressEvent} from '@azure/core-http'
+import {
+  validateArtifactName,
+  validateRootDirectory
+} from './path-and-artifact-name-validation'
+import {CreateArtifactRequest, FinalizeArtifactRequest} from './api/v1/artifact'
+import {StringValue} from './google/protobuf/wrappers'
+import {Timestamp} from './google/protobuf/timestamp'
+import {getBackendIdsFromToken} from './utils'
+import {internalArtifactTwirpClient} from './artifact-twirp-client'
 
 export async function uploadArtifact(
   artifactName: string,
@@ -33,36 +49,79 @@ export async function uploadArtifact(
   core.setOutput('artifact-url', artifactURL)
 }
 
+export function isGhes(): boolean {
+  const ghUrl = new URL(
+    process.env['GITHUB_SERVER_URL'] || 'https://github.com'
+  )
+  return ghUrl.hostname.toUpperCase() !== 'GITHUB.COM'
+}
+
 async function uploadArtifact1(
   name: string,
   files: string[],
   rootDirectory: string,
   options?: UploadArtifactOptions
 ): Promise<UploadArtifactResponse> {
-    try {
-      if (isGhes()) {
-        throw new GHESNotSupportedError()
-      }
+  try {
+    if (isGhes()) {
+      throw new GHESNotSupportedError()
+    }
 
-      if (Array.isArray(files) && files?.length === 1) {
-        core.info(`uploading single artifact`)
-        return uploadSingleArtifact(name, files.at(0) as string, rootDirectory, options)
-      }
-      
-    } catch (error) {
-      warning(
-        `Artifact upload failed with error: ${error}.
+    if (Array.isArray(files) && files?.length === 1) {
+      core.info(`uploading single artifact`)
+      return uploadSingleArtifact(
+        name,
+        files.at(0) as string,
+        rootDirectory,
+        options
+      )
+    }
+
+    core.info(`uploading multiple artifact bundle`)
+    return artifact.uploadArtifact(name, files, rootDirectory, options)
+  } catch (error) {
+    core.warning(
+      `Artifact upload failed with error: ${error}.
 
     Errors can be temporary, so please try again and optionally run the action with debug mode enabled for more information.
 
     If the error persists, please check whether Actions is operating normally at [https://githubstatus.com](https://www.githubstatus.com).`
-      )
+    )
 
-      throw error
-    }
-    
-    core.info(`uploading multiple artifact bundle`)
-    return artifact.uploadArtifact(name, files, rootDirectory, options)
+    throw error
+  }
+}
+
+function getRetentionDays(): number | undefined {
+  const retentionDays = process.env['GITHUB_RETENTION_DAYS']
+  if (!retentionDays) {
+    return undefined
+  }
+  const days = parseInt(retentionDays)
+  if (isNaN(days)) {
+    return undefined
+  }
+
+  return days
+}
+
+export function getExpiration(retentionDays?: number): Timestamp | undefined {
+  if (!retentionDays) {
+    return undefined
+  }
+
+  const maxRetentionDays = getRetentionDays()
+  if (maxRetentionDays && maxRetentionDays < retentionDays) {
+    core.warning(
+      `Retention days cannot be greater than the maximum allowed retention set within the repository. Using ${maxRetentionDays} instead.`
+    )
+    retentionDays = maxRetentionDays
+  }
+
+  const expirationDate = new Date()
+  expirationDate.setDate(expirationDate.getDate() + retentionDays)
+
+  return Timestamp.fromDate(expirationDate)
 }
 
 async function uploadSingleArtifact(
@@ -70,7 +129,7 @@ async function uploadSingleArtifact(
   file: string,
   rootDirectory: string,
   options?: UploadArtifactOptions | undefined
-): Promise<UploadArtifactResponse> => {
+): Promise<UploadArtifactResponse> {
   validateArtifactName(name)
   validateRootDirectory(rootDirectory)
 
@@ -94,15 +153,16 @@ async function uploadSingleArtifact(
     createArtifactReq.expiresAt = expiresAt
   }
 
-  const createArtifactResp =
-    await artifactClient.CreateArtifact(createArtifactReq)
+  const createArtifactResp = await artifactClient.CreateArtifact(
+    createArtifactReq
+  )
   if (!createArtifactResp.ok) {
     throw new InvalidResponseError(
       'CreateArtifact: response from backend was not ok'
     )
   }
 
-  const uploadArtifactStream = createReadStream(file);
+  const uploadArtifactStream = createReadStream(file)
 
   /* TODO check stream validity */
 
@@ -127,8 +187,9 @@ async function uploadSingleArtifact(
 
   core.info(`Finalizing artifact upload`)
 
-  const finalizeArtifactResp =
-    await artifactClient.FinalizeArtifact(finalizeArtifactReq)
+  const finalizeArtifactResp = await artifactClient.FinalizeArtifact(
+    finalizeArtifactReq
+  )
   if (!finalizeArtifactResp.ok) {
     throw new InvalidResponseError(
       'FinalizeArtifact: response from backend was not ok'
@@ -145,8 +206,39 @@ async function uploadSingleArtifact(
     id: Number(artifactId)
   }
 }
-  
-  
+
+export interface BlobUploadResponse {
+  /**
+   * The total reported upload size in bytes. Empty if the upload failed
+   */
+  uploadSize?: number
+
+  /**
+   * The SHA256 hash of the uploaded file. Empty if the upload failed
+   */
+  sha256Hash?: string
+}
+
+// Mimics behavior of azcopy: https://learn.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-optimize
+// If your machine has fewer than 5 CPUs, then the value of this variable is set to 32.
+// Otherwise, the default value is equal to 16 multiplied by the number of CPUs. The maximum value of this variable is 300.
+export function getConcurrency(): number {
+  const numCPUs = os.cpus().length
+
+  if (numCPUs <= 4) {
+    return 32
+  }
+
+  const concurrency = 16 * numCPUs
+  return concurrency > 300 ? 300 : concurrency
+}
+
+// Used for controlling the highWaterMark value of the zip that is being streamed
+// The same value is used as the chunk size that is use during upload to blob storage
+export function getUploadChunkSize(): number {
+  return 8 * 1024 * 1024 // 8 MB Chunks
+}
+
 async function uploadActifactToBlobStorage(
   authenticatedUploadURL: string,
   artifactUploadStream: ReadStream
@@ -188,9 +280,9 @@ async function uploadActifactToBlobStorage(
       maxConcurrency,
       options
     )
-  } catch (error) {
-    if (NetworkError.isNetworkErrorCode(error?.code)) {
-      throw new NetworkError(error?.code)
+  } catch (error: unknown) {
+    if (NetworkError.isNetworkErrorCode((error as any)?.code)) {
+      throw new NetworkError((error as any)?.code)
     }
 
     throw error
@@ -212,4 +304,4 @@ async function uploadActifactToBlobStorage(
     uploadSize: uploadByteCount,
     sha256Hash
   }
-}  
+}
