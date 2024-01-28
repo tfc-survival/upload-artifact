@@ -260,7 +260,7 @@ async function uploadActifactToBlobStorage(
   }
 
   const options: BlockBlobUploadStreamOptions = {
-    blobHTTPHeaders: {blobContentType: 'zip'},
+    blobHTTPHeaders: {blobContentType: 'application/octet-stream'},
     onProgress: uploadCallback
   }
 
@@ -292,7 +292,7 @@ async function uploadActifactToBlobStorage(
 
   hashStream.end()
   sha256Hash = hashStream.read() as string
-  core.info(`SHA256 hash of uploaded artifact zip is ${sha256Hash}`)
+  core.info(`SHA256 hash of uploaded single artifact is ${sha256Hash}`)
 
   if (uploadByteCount === 0) {
     core.warning(
